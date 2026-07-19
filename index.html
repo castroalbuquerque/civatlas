@@ -1226,13 +1226,14 @@ function sbAiApplyEvento(){
 #sbTlTip{position:fixed;z-index:230;background:var(--panel);border:1px solid var(--accent);color:var(--text);font-family:var(--font-ui);font-size:12px;letter-spacing:.03em;padding:6px 12px;border-radius:8px;pointer-events:none;opacity:0;transform:translate(-50%,calc(-100% - 10px));transition:opacity .15s ease;white-space:nowrap;max-width:84vw;overflow:hidden;text-overflow:ellipsis;box-shadow:0 8px 24px rgba(0,0,0,.5)}
 #sbTlTip.on{opacity:1}
 
-/* ===== ajustes v12: rotulos, hero em largura total, loading centralizado ===== */
+/* ===== ajustes v12.1: rotulos, hero em largura total (mesmo mecanismo do slot de evento), loading centralizado, aviso compacto ===== */
 .civ-zone-name{fill:#fff;font-weight:700;text-anchor:middle;filter:url(#lblBg);pointer-events:none;animation:atlasFade .6s ease both}
-.modal-hero{height:auto;min-height:0}
-.modal-hero .image-slot{height:auto;min-height:220px}
-.modal-hero .image-slot.has-image{min-height:0}
-.modal-hero .civ-image{width:100%;max-height:none}
+.modal-hero{height:auto;min-height:0;max-height:none}
+.modal-hero .image-slot{height:auto;min-height:0;max-height:none;aspect-ratio:16/9}
 .image-slot.sb-loading:before{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);margin:0;white-space:nowrap}
+.civ-list .empty{padding:10px 12px;font-size:12px;line-height:1.35;margin:auto 0}
+.civ-list .empty strong{margin-bottom:4px;font-size:1em}
+.civ-list:has(.empty){overflow:hidden;align-content:center}
 </style>
 <script>
 /* ============ v3 — tooltip e toque duplo na linha do tempo ============ */
