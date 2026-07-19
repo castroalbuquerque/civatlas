@@ -408,13 +408,13 @@ function renderTimeline(){
   var regs={};civs.forEach(function(c){(regs[c.region]=regs[c.region]||[]).push(c);});
   var order=Object.keys(regs).sort(function(a,b){return Math.min.apply(null,regs[a].map(function(c){return c.inicioAno;}))-Math.min.apply(null,regs[b].map(function(c){return c.inicioAno;}));});
   legend.innerHTML='';
-  order.forEach(function(rid){var s=document.createElement('span');s.innerHTML='<i style="background:'+TL_REGCOLOR[rid]+'"></i>'+(DATA.regions[rid]?DATA.regions[rid].name:rid);legend.appendChild(s);});
+  order.forEach(function(rid){var s=document.createElement('span');s.innerHTML='<i style="background:'+TL_REGCOLOR[rid]+'"></i>'+_esc(DATA.regions[rid]?DATA.regions[rid].name:rid);legend.appendChild(s);});
   rows.innerHTML='';var laneH=26;
   order.forEach(function(rid){
     var items=regs[rid],n=_tlPack(items);
     var row=document.createElement('div');row.className='tl-row';
     var lab=document.createElement('div');lab.className='tl-lab';
-    lab.innerHTML='<span style="border-left:3px solid '+TL_REGCOLOR[rid]+';padding-left:6px">'+(DATA.regions[rid]?DATA.regions[rid].name:rid)+'</span>';
+    lab.innerHTML='<span style="border-left:3px solid '+TL_REGCOLOR[rid]+';padding-left:6px">'+_esc(DATA.regions[rid]?DATA.regions[rid].name:rid)+'</span>';
     var track=document.createElement('div');track.className='tl-track';
     var bars=document.createElement('div');bars.className='tl-bars';bars.style.height=(n*laneH)+'px';
     items.forEach(function(c){
@@ -441,13 +441,13 @@ function toggleTimeline(){
 }
 function cycleMapZoom(){var n=(mapZoom+1)%3; if(n===0){showWorld();} else if(n===1){deepZoom=false;renderMap();focusBlock();} else {var ids=blockRegionIds(); if(!selectedRegion||(ids&&ids.indexOf(selectedRegion)<0)){if(ids&&ids.length)selectRegion(ids[0]);} if(selectedRegion){deepZoom=true;mapZoom=2;renderMap();var b=DATA.regions[selectedRegion]&&DATA.regions[selectedRegion].bounds;if(b)setViewBox(b,18);}else{focusBlock();}}}
 function regionPath(id){const r=DATA.regions[id]; if(!r)return ''; return r.d?`<path class="region ${selectedRegion===id?'selected':''}" data-region="${id}" d="${r.d}"></path>`:`<rect class="region ${selectedRegion===id?'selected':''}" data-region="${id}" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="10"></rect>`}
-function regionLabel(id){const r=DATA.regions[id]; const count=regionCivs(id).length; const dim=(selectedRegion&&id!==selectedRegion)?' dim':''; const cx=r.cx||r.x+r.w/2; return `<text class="region-label${dim}" x="${cx}" y="${r.cy||r.y+r.h/2-4}">${r.name}</text><text class="region-count${dim}" x="${cx}" y="${(r.cy||r.y+r.h/2)+16}">${count}</text>`}
+function regionLabel(id){const r=DATA.regions[id]; const count=regionCivs(id).length; const dim=(selectedRegion&&id!==selectedRegion)?' dim':''; const cx=r.cx||r.x+r.w/2; return `<text class="region-label${dim}" x="${cx}" y="${r.cy||r.y+r.h/2-4}">${_esc(r.name)}</text><text class="region-count${dim}" x="${cx}" y="${(r.cy||r.y+r.h/2)+16}">${count}</text>`}
 function renderMap(){measureSvg(); els.regionsLayer.innerHTML=''; const ids=deepZoom&&selectedRegion?[selectedRegion]:blockRegionIds(); let out=''; for(const id of ids){out+=regionPath(id)+(deepZoom?'':regionLabel(id))} if(deepZoom&&selectedRegion)out+=renderCivZones(selectedRegion); els.regionsLayer.innerHTML=out; scaleLabels(); scheduleDeOverlap(); }
 function renderCivZones(id){const r=DATA.regions[id], list=regionCivs(id); if(!r?.bounds||!list.length)return ''; const [x1,y1,x2,y2]=r.bounds; const w=x2-x1,h=y2-y1; let s=''; list.forEach((c,i)=>{const n=list.length; const cols=Math.ceil(Math.sqrt(n)); const rows=Math.ceil(n/cols); const col=i%cols,row=Math.floor(i/cols); const cx=x1+w*(col+.5)/cols, cy=y1+h*(row+.5)/rows; const rw=w/cols*.72, rh=h/rows*.55; const pts=`${cx-rw/2},${cy-rh*.35} ${cx-rw*.15},${cy-rh/2} ${cx+rw/2},${cy-rh*.28} ${cx+rw*.42},${cy+rh*.38} ${cx-rw*.34},${cy+rh/2}`; s+=`<polygon class="civ-zone" data-civ="${c.id}" points="${pts}"></polygon><text class="civ-zone-label" x="${cx}" y="${cy-rh*.06}">${i+1}</text><text class="civ-zone-name" x="${cx}" y="${cy+rh*.3}">${_esc(c.name)}</text>`}); return s}
-function renderSide(){const b=DATA.blocks[current]; if(selectedRegion){els.sideTitle.textContent=DATA.regions[selectedRegion].name; els.sideText.textContent=REGION_TEXT[selectedRegion]||'Região selecionada.'} else {els.sideTitle.textContent='Regiões em foco'; els.sideText.textContent=b.description} els.legend.innerHTML=''; blockRegionIds().forEach(id=>{const btn=document.createElement('button'); btn.className='legend-item'+(id===selectedRegion?' selected':''); btn.textContent=`${DATA.regions[id].name}: ${regionCivs(id).length}`; btn.onclick=()=>selectRegion(id); els.legend.appendChild(btn)}); els.civList.innerHTML=''; const list=selectedRegion?regionCivs(selectedRegion):[]; if(!selectedRegion){els.civList.innerHTML='<div class="empty"><strong>Escolha uma região</strong>Use uma área iluminada no mapa ou a legenda acima para revelar os cards daquele recorte.</div>'; return} list.forEach((c,i)=>{const card=document.createElement('button'); card.className='civ-card'; card.dataset.civId=c.id; card.innerHTML=`<strong><span class="civ-number">${i+1}</span>${c.name}</strong><div class="civ-meta"><span class="tag">${c.period}</span><span class="tag">${DATA.regions[c.region].name}</span><span class="tag">${c.type}</span></div>`; els.civList.appendChild(card)})}
+function renderSide(){const b=DATA.blocks[current]; if(selectedRegion){els.sideTitle.textContent=DATA.regions[selectedRegion].name; els.sideText.textContent=REGION_TEXT[selectedRegion]||'Região selecionada.'} else {els.sideTitle.textContent='Regiões em foco'; els.sideText.textContent=b.description} els.legend.innerHTML=''; blockRegionIds().forEach(id=>{const btn=document.createElement('button'); btn.className='legend-item'+(id===selectedRegion?' selected':''); btn.textContent=`${DATA.regions[id].name}: ${regionCivs(id).length}`; btn.onclick=()=>selectRegion(id); els.legend.appendChild(btn)}); els.civList.innerHTML=''; const list=selectedRegion?regionCivs(selectedRegion):[]; if(!selectedRegion){els.civList.innerHTML='<div class="empty"><strong>Escolha uma região</strong>Use uma área iluminada no mapa ou a legenda acima para revelar os cards daquele recorte.</div>'; return} list.forEach((c,i)=>{const card=document.createElement('button'); card.className='civ-card'; card.dataset.civId=c.id; card.innerHTML=`<strong><span class="civ-number">${i+1}</span>${_esc(c.name)}</strong><div class="civ-meta"><span class="tag">${_esc(c.period)}</span><span class="tag">${_esc(DATA.regions[c.region].name)}</span><span class="tag">${_esc(c.type)}</span></div>`; els.civList.appendChild(card)})}
 function renderProgress(){els.progress.innerHTML=''; DATA.blocks.forEach((_,i)=>{const d=document.createElement('button'); d.className='dot'+(i===current?' active':''); d.title='Ir para bloco '+(i+1); d.onclick=()=>{current=i; render()}; els.progress.appendChild(d)})}
 function render(){const b=DATA.blocks[current]; selectedRegion=null; deepZoom=false; document.body.className='theme-'+b.theme; els.blockName.textContent=b.title; els.blockPeriod.textContent=b.period; els.counter.textContent=`${current+1}/${DATA.blocks.length}`; els.duration.textContent=b.duration; renderProgress(); renderMap(); renderSide(); requestAnimationFrame(focusBlock); if(showTimeline)renderTimeline()}
-function openCiv(id,edit){const c=DATA.civilizations.find(x=>x.id===id); if(!c)return; currentCivId=id; els.modalName.textContent=c.name; els.modalTags.innerHTML=`<span class="tag">${String(c.catalogId).padStart(3,'0')}</span><span class="tag">${c.type}</span><span class="tag">${DATA.regions[c.region]?.name||c.region}</span><span class="tag">${DATA.blocks.find(b=>b.id===c.block)?.title||''}</span>`; els.modalDesc.textContent=c.description; els.modalBody.innerHTML=''; [['Período',c.period],['Duração',c.duration],['Tamanho máximo aproximado',c.size],['Tipo',c.type],['Região',DATA.regions[c.region]?.name||c.region],['Marco de início',c.start],['Marco de fim / transição',c.end],['Legado / importância',c.legacy],['Influência estimada',`${c.influence}/100`]].forEach(([k,v])=>{const div=document.createElement('div'); div.className='info '+(String(v).length>80?'wide':''); div.innerHTML=`<label>${k}</label><span>${v}</span>`; els.modalBody.appendChild(div)}); loadImage(c); renderFigure(c); currentScene=0; renderEvent(c); renderGeo(c); renderEvid(c); updateNext(c); els.modal.classList.add('open'); els.modal.setAttribute('aria-hidden','false'); els.modalCard.scrollTop=0; setEditMode(!!edit)}
+function openCiv(id,edit){const c=DATA.civilizations.find(x=>x.id===id); if(!c)return; currentCivId=id; els.modalName.textContent=c.name; els.modalTags.innerHTML=`<span class="tag">${String(c.catalogId).padStart(3,'0')}</span><span class="tag">${_esc(c.type)}</span><span class="tag">${_esc(DATA.regions[c.region]?.name||c.region)}</span><span class="tag">${_esc(DATA.blocks.find(b=>b.id===c.block)?.title||'')}</span>`; els.modalDesc.textContent=c.description; els.modalBody.innerHTML=''; [['Período',c.period],['Duração',c.duration],['Tamanho máximo aproximado',c.size],['Tipo',c.type],['Região',DATA.regions[c.region]?.name||c.region],['Marco de início',c.start],['Marco de fim / transição',c.end],['Legado / importância',c.legacy],['Influência estimada',`${c.influence}/100`]].forEach(([k,v])=>{const div=document.createElement('div'); div.className='info '+(String(v).length>80?'wide':''); div.innerHTML=`<label>${k}</label><span>${v}</span>`; els.modalBody.appendChild(div)}); loadImage(c); renderFigure(c); currentScene=0; renderEvent(c); renderGeo(c); renderEvid(c); updateNext(c); els.modal.classList.add('open'); els.modal.setAttribute('aria-hidden','false'); els.modalCard.scrollTop=0; setEditMode(!!edit)}
 function expectedEventImage(c){const base=(c.image||`${String(c.catalogId).padStart(3,'0')}_${c.id}.png`).split('/').pop().replace(/\.[a-z0-9]+$/i,''); return `assets/evento_${base}.png`}
 function getEvent(c){var e=EVENTS[c.id]||{}; return {name:e.name||'',description:e.description||'',image:(e.image||expectedEventImage(c)),scenes:e.scenes}}
 function renderEvent(c){var e=getEvent(c); var nav=document.getElementById('sceneNav'); var sc=e.scenes; var _es=document.getElementById('eventSection'); if(_es)_es.classList.toggle('scene-mode',!!(sc&&sc.length)); if(sc&&sc.length){ if(currentScene<0||currentScene>=sc.length)currentScene=0; var s=sc[currentScene]; els.eventName.textContent=s.name; els.eventText.textContent=s.description; loadSlot(els.eventSlot,s.image,'Cena: '+s.name,'civ-image'); if(nav){nav.hidden=false; var cc=document.getElementById('sceneCounter'); if(cc)cc.textContent='Cena '+(currentScene+1)+' / '+sc.length; var pv=document.getElementById('scenePrev'),nx=document.getElementById('sceneNext'); if(pv)pv.classList.toggle('show',currentScene>0); if(nx)nx.classList.toggle('show',currentScene<sc.length-1);} } else { if(nav)nav.hidden=true; els.eventName.textContent=e.name; els.eventText.textContent=e.description; loadSlot(els.eventSlot,e.image,`Imagem de ${e.name||c.name}`,'civ-image'); } }
@@ -477,7 +477,7 @@ function closeRankings(){els.rankScreen.classList.remove('open'); els.rankScreen
 const RANKS={antiguidade:'Antiguidade',tamanho:'Tamanho',populacao:'População',duracao:'Duração',influencia:'Influência'};
 function rankData(kind){let arr=[...DATA.civilizations]; if(kind==='antiguidade')arr.sort(sortChronological); if(kind==='tamanho')arr.sort((a,b)=>(b.areaKm2||0)-(a.areaKm2||0)||sortChronological(a,b)); if(kind==='populacao')arr.sort((a,b)=>(b.popPeak||0)-(a.popPeak||0)||sortChronological(a,b)); if(kind==='duracao')arr.sort((a,b)=>parseDuration(b)-parseDuration(a)); if(kind==='influencia')arr.sort((a,b)=>(b.influence||0)-(a.influence||0)||sortChronological(a,b)); return arr}
 function metric(c,kind){if(kind==='antiguidade')return fmtYear(chronologicalStart(c)); if(kind==='tamanho')return fmtSize(c.areaKm2); if(kind==='populacao')return fmtPop(c.popPeak); if(kind==='duracao')return (parseDuration(c)||'—')+' anos'; return (c.influence||0)+'/100'}
-function renderRank(kind){els.rankTabs.innerHTML=''; Object.entries(RANKS).forEach(([k,v])=>{const b=document.createElement('button'); b.className='rank-tab'+(k===kind?' active':''); b.textContent=v; b.onclick=()=>renderRank(k); els.rankTabs.appendChild(b)}); els.rankList.innerHTML=''; rankData(kind).forEach((c,i)=>{const row=document.createElement('button'); row.className='rank-row'; row.dataset.civId=c.id; row.innerHTML=`<div class="rank-num">${i+1}</div><div class="rank-main"><strong>${c.name}</strong><span>${DATA.blocks.find(b=>b.id===c.block)?.title||''} · ${DATA.regions[c.region]?.name||c.region}</span></div><div class="rank-metric">${metric(c,kind)}</div><div class="rank-chip">${c.type}</div><div class="rank-chip">${String(c.catalogId).padStart(3,'0')}</div>`; els.rankList.appendChild(row)})}
+function renderRank(kind){els.rankTabs.innerHTML=''; Object.entries(RANKS).forEach(([k,v])=>{const b=document.createElement('button'); b.className='rank-tab'+(k===kind?' active':''); b.textContent=v; b.onclick=()=>renderRank(k); els.rankTabs.appendChild(b)}); els.rankList.innerHTML=''; rankData(kind).forEach((c,i)=>{const row=document.createElement('button'); row.className='rank-row'; row.dataset.civId=c.id; row.innerHTML=`<div class="rank-num">${i+1}</div><div class="rank-main"><strong>${_esc(c.name)}</strong><span>${_esc(DATA.blocks.find(b=>b.id===c.block)?.title||'')} · ${_esc(DATA.regions[c.region]?.name||c.region)}</span></div><div class="rank-metric">${_esc(metric(c,kind))}</div><div class="rank-chip">${c.type}</div><div class="rank-chip">${String(c.catalogId).padStart(3,'0')}</div>`; els.rankList.appendChild(row)})}
 function fsActive(){return !!(document.fullscreenElement||document.webkitFullscreenElement)}
 function _gate(){return document.getElementById('fsGate')}
 function showGate(){const g=_gate(); if(g)g.style.display='flex'}
@@ -900,6 +900,23 @@ function sbPickImage(cb){
   inp.onchange=async ()=>{ const f=inp.files[0]; if(f) cb(f); };
   inp.click();
 }
+function sbOldAsset(kind, c){
+  /* nome do arquivo atualmente exibido, para remoção após a troca (melhor esforço) */
+  try{
+    let p='';
+    if(kind==='civ') p=c.image||'';
+    if(kind==='personagem') p=(FIGURES[c.id]||{}).image||'';
+    if(kind==='evidencia') p=(EVID[c.id]||{}).image||'';
+    if(kind==='evento'){ const ev=EVENTS[c.id]||{}; p=(ev.scenes&&ev.scenes.length)?((ev.scenes[currentScene]||{}).image||''):(ev.image||''); }
+    return String(p).replace(/^assets\//,'');
+  }catch(e){ return ''; }
+}
+async function sbRemoveAssets(names){
+  try{
+    const list=(names||[]).filter(Boolean).map(n=>'assets/'+String(n).replace(/^assets\//,''));
+    if(list.length) await sb.storage.from(SB_BUCKET).remove(list);
+  }catch(e){}
+}
 async function sbSetMedia(kind, c, basename){
   if(kind==='civ'){ const r=await sb.from('civilizacoes').update({imagem_path:basename}).eq('slug',c.id); if(r.error)throw r.error; c.imagemPath=basename; c.image='assets/'+basename; }
   if(kind==='personagem'){ const f=FIGURES[c.id]||{name:'—'}; const r=await sb.from('figuras').upsert({civilizacao_slug:c.id, nome:f.name||'—', papel:f.role, descricao:f.description, imagem_path:basename},{onConflict:'civilizacao_slug'}); if(r.error)throw r.error; f.image='assets/'+basename; FIGURES[c.id]=f; }
@@ -927,8 +944,10 @@ function sbCivImageUpload(kind){
       const ext=(f.name.split('.').pop()||'png').toLowerCase();
       const stem = pad3(c.catalogId)+'_'+c.id;
       const name = ({civ:stem, personagem:'personagem_'+stem, evidencia:'evidencia_'+stem, evento:'evento_'+stem})[kind]+'_'+Date.now()+'.'+ext;
+      const antigo = sbOldAsset(kind, c);
       await sbUploadTo(name, f);
       await sbSetMedia(kind, c, name);
+      if(antigo && antigo!==name) sbRemoveAssets([antigo]);
       toast((sbIsVideo(name)?'Vídeo enviado: ':'Imagem enviada: ')+name);
       const cs=currentScene; openCiv(c.id, editMode); if(kind==='evento'&&cs){currentScene=cs; renderEvent(c);}
     }catch(err){ toast('Erro no upload: '+(err.message||err)); }
@@ -980,6 +999,7 @@ function sbCenaAudio(ei,si){
       const base='audio_evento_'+pad3(sbEvCiv.catalogId)+'_'+sbEvCiv.id+'_'+pad3(si+1)+'_'+Date.now()+'.'+ext;
       const {error}=await sb.storage.from(SB_BUCKET).upload('assets/'+base, f, {upsert:true, contentType:f.type||'audio/mpeg'});
       if(error) throw error;
+      const ant=sbEvDraft[ei].cenas[si].audio_path; if(ant&&ant!==base)(sbEvDraft._obsoletos=sbEvDraft._obsoletos||[]).push(ant);
       sbEvDraft[ei].cenas[si].audio_path = base; sbRenderEvEditor(); toast('Áudio da cena enviado');
     }catch(err){ toast('Erro no upload: '+(err.message||err)); }
   };
@@ -991,6 +1011,7 @@ function sbCenaImg(ei,si){
       const ext=(f.name.split('.').pop()||'png').toLowerCase();
       const base='evento_'+pad3(sbEvCiv.catalogId)+'_'+sbEvCiv.id+'_'+pad3(si+1)+'_'+Date.now()+'.'+ext;
       await sbUploadTo(base, f);
+      const ant=sbEvDraft[ei].cenas[si].imagem_path; if(ant&&ant!==base)(sbEvDraft._obsoletos=sbEvDraft._obsoletos||[]).push(ant);
       sbEvDraft[ei].cenas[si].imagem_path = base; sbRenderEvEditor(); toast('Imagem da cena enviada');
     }catch(err){ toast('Erro no upload: '+(err.message||err)); }
   });
@@ -1020,6 +1041,7 @@ async function sbEvSave(){
       r = await sb.from('eventos').update({ordem:i+1}).eq('id', novos[i]); if(r.error) throw r.error;
     }
     await sbLoadAll();
+    if(sbEvDraft._obsoletos&&sbEvDraft._obsoletos.length){ sbRemoveAssets(sbEvDraft._obsoletos); sbEvDraft._obsoletos=[]; }
     m.textContent='Salvo.'; sbClose('sbEvModal'); openCiv(c.id,false); toast('Eventos e cenas salvos');
   }catch(err){
     m.className='sb-msg err'; m.textContent='Erro ao salvar: '+(err.message||err)+' — recarregando os dados para mostrar o estado atual do banco; revise e tente de novo.';
