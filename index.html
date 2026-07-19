@@ -524,7 +524,7 @@ function buildEditor(c){
   var ed=EVID[c.id]||{name:'',local:'',data:'',idade:'',descobridor:'',keywords:'',story:''};
   var reg=Object.keys(DATA.regions).map(function(id){return '<option value="'+id+'"'+(id===c.region?' selected':'')+'>'+_esc(DATA.regions[id].name)+'</option>'}).join('');
   var blk=DATA.blocks.map(function(b){return '<option value="'+b.id+'"'+(b.id===c.block?' selected':'')+'>'+_esc(b.title)+'</option>'}).join('');
-  document.getElementById('editForm').innerHTML='<div id="sbCivImgBtns">'+'<button type="button" class="sb-mini" onclick="sbCivImageUpload(\'civ\')">Mídia da civilização</button>'+'<button type="button" class="sb-mini" onclick="sbCivImageUpload(\'personagem\')">Mídia do personagem</button>'+'<button type="button" class="sb-mini" onclick="sbCivImageUpload(\'evidencia\')">Mídia da evidência</button>'+'<button type="button" class="sb-mini" onclick="sbCivImageUpload(\'evento\')">Mídia do evento</button>'+'<button type="button" class="sb-mini" onclick="sbAiOpen()">Rascunho com IA</button>'+'</div>'+
+  document.getElementById('editForm').innerHTML='<div id="sbCivImgBtns">'+'<button type="button" class="sb-mini" onclick="sbCivImageUpload(\'civ\')">Mídia da civilização</button>'+'<button type="button" class="sb-mini" onclick="sbCivImageUpload(\'personagem\')">Mídia do personagem</button>'+'<button type="button" class="sb-mini" onclick="sbCivImageUpload(\'evidencia\')">Mídia da evidência</button>'+'<button type="button" class="sb-mini" onclick="sbCivImageUpload(\'evento\')">Mídia do evento/cena</button>'+'<button type="button" class="sb-mini" onclick="sbAiOpen()">Rascunho com IA</button>'+'</div>'+
     '<div class="ef-grid">'
     +_efFld('ed_name','Nome',c.name,true)
     +_efNum('ed_influence','Influência (0–100)',c.influence)
@@ -904,7 +904,21 @@ async function sbSetMedia(kind, c, basename){
   if(kind==='civ'){ const r=await sb.from('civilizacoes').update({imagem_path:basename}).eq('slug',c.id); if(r.error)throw r.error; c.imagemPath=basename; c.image='assets/'+basename; }
   if(kind==='personagem'){ const f=FIGURES[c.id]||{name:'—'}; const r=await sb.from('figuras').upsert({civilizacao_slug:c.id, nome:f.name||'—', papel:f.role, descricao:f.description, imagem_path:basename},{onConflict:'civilizacao_slug'}); if(r.error)throw r.error; f.image='assets/'+basename; FIGURES[c.id]=f; }
   if(kind==='evidencia'){ const e=EVID[c.id]||{name:'—'}; const r=await sb.from('evidencias').upsert({civilizacao_slug:c.id, nome:e.name||'—', local:e.local, data_descoberta:e.data, idade:e.idade, descobridor:e.descobridor, keywords:e.keywords, historia:e.story, imagem_path:basename},{onConflict:'civilizacao_slug'}); if(r.error)throw r.error; e.image='assets/'+basename; EVID[c.id]=e; }
-  if(kind==='evento'){ const ev=EVENTS[c.id]||{}; const r=await sb.from('eventos').upsert({civilizacao_slug:c.id, ordem:1, nome:ev.name||'—', descricao:ev.description, imagem_path:basename},{onConflict:'civilizacao_slug,ordem'}); if(r.error)throw r.error; ev.image='assets/'+basename; EVENTS[c.id]=ev; }
+  if(kind==='evento'){
+    const ev=EVENTS[c.id]||{}; const ordem=ev._ordem||1;
+    if(ev.scenes&&ev.scenes.length){
+      /* o Atlas exibe a mídia da cena; grava na cena atualmente visível */
+      const q=await sb.from('eventos').select('id').eq('civilizacao_slug',c.id).eq('ordem',ordem).single(); if(q.error)throw q.error;
+      const s=ev.scenes[currentScene]||{};
+      const r=await sb.from('cenas').upsert({evento_id:q.data.id, ordem:currentScene+1, nome:s.name||'—', descricao:s.description, imagem_path:basename, audio_path:s.audio||null},{onConflict:'evento_id,ordem'}); if(r.error)throw r.error;
+      ev.scenes=ev.scenes.slice(); ev.scenes[currentScene]=Object.assign({},s,{image:basename}); EVENTS[c.id]=ev;
+      try{ const raw=(window.SB_EVENTOS[c.id]||[]).find(x=>x.ordem===ordem); if(raw&&raw._cenas&&raw._cenas[currentScene]) raw._cenas[currentScene].imagem_path=basename; }catch(e2){}
+    } else {
+      const r=await sb.from('eventos').upsert({civilizacao_slug:c.id, ordem:ordem, nome:ev.name||'—', descricao:ev.description, imagem_path:basename},{onConflict:'civilizacao_slug,ordem'}); if(r.error)throw r.error;
+      ev.image='assets/'+basename; EVENTS[c.id]=ev;
+      try{ const raw=(window.SB_EVENTOS[c.id]||[]).find(x=>x.ordem===ordem); if(raw) raw.imagem_path=basename; }catch(e2){}
+    }
+  }
 }
 function sbCivImageUpload(kind){
   const c = DATA.civilizations.find(x=>x.id===currentCivId); if(!c) return;
@@ -916,7 +930,7 @@ function sbCivImageUpload(kind){
       await sbUploadTo(name, f);
       await sbSetMedia(kind, c, name);
       toast((sbIsVideo(name)?'Vídeo enviado: ':'Imagem enviada: ')+name);
-      openCiv(c.id, editMode);
+      const cs=currentScene; openCiv(c.id, editMode); if(kind==='evento'&&cs){currentScene=cs; renderEvent(c);}
     }catch(err){ toast('Erro no upload: '+(err.message||err)); }
   });
 }
@@ -925,7 +939,7 @@ function sbCivImageUpload(kind){
 function sbOpenEvEditor(){
   const c = DATA.civilizations.find(x=>x.id===currentCivId); if(!c) return;
   sbEvCiv = c;
-  const evs = (window.SB_EVENTOS[c.id]||[]).map(e=>({id:e.id, ordem:e.ordem, nome:e.nome, descricao:e.descricao,
+  const evs = (window.SB_EVENTOS[c.id]||[]).map(e=>({id:e.id, ordem:e.ordem, nome:e.nome, descricao:e.descricao, imagem_path:e.imagem_path||null,
     cenas:(e._cenas||[]).map(s=>({nome:s.nome, descricao:s.descricao, imagem_path:s.imagem_path, audio_path:s.audio_path}))}));
   sbEvDraft = evs.sort((a,b)=>a.ordem-b.ordem);
   $id('sbEvSub').textContent = c.name+' — nº '+pad3(c.catalogId)+'. O evento 1 é o exibido no Atlas.';
@@ -991,7 +1005,7 @@ async function sbEvSave(){
     const novos=[];
     for(let i=0;i<sbEvDraft.length;i++){
       const e=sbEvDraft[i];
-      r = await sb.from('eventos').insert({civilizacao_slug:c.id, ordem:TMP+i+1, nome:e.nome||'—', descricao:e.descricao}).select().single();
+      r = await sb.from('eventos').insert({civilizacao_slug:c.id, ordem:TMP+i+1, nome:e.nome||'—', descricao:e.descricao, imagem_path:e.imagem_path||null}).select().single();
       if(r.error) throw r.error;
       novos.push(r.data.id);
       for(let j=0;j<e.cenas.length;j++){
